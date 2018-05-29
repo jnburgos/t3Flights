@@ -19,6 +19,8 @@
 
       var dictionary = {};
       var markRoute = {};
+      var infowindow = null;
+
 
       socket.on('POSITION', function (data) {
 
@@ -26,6 +28,7 @@
         var posY = data["position"][1];
         var aCode = data["code"];
         var pos = {lat: posX, lng: posY};
+
 
         markRoute[aCode].setPosition(pos);
 
@@ -48,7 +51,7 @@
           var flightPath = new google.maps.Polyline({
             path: dictionary[code],
             geodesic: true,
-            strokeColor: '#d8d506',
+            strokeColor: '#06d81b',
             strokeOpacity: 1.0,
             strokeWeight: 2
           });
@@ -56,9 +59,6 @@
           flightPath.setMap(window.googleMap);
 
         }
-
-
-
 
       });
 
@@ -74,7 +74,7 @@
 
       socket.on('AIRPORTS', function (data) {
         console.log(data);
-
+        var contentString = "";
         for (arprt in data) {
           // console.log(data[arprt]["airport_position"][0]);
           // console.log(data[arprt]["airport_position"][1]);
@@ -82,21 +82,23 @@
           var y = data[arprt]["airport_position"][1];
           var pos = {lat: x, lng: y};
 
-          var contentString = data[arprt]['name'];
+          contentString = data[arprt]['name'];
           console.log(contentString);
-
-          var infowindow = new google.maps.InfoWindow({
-            content: contentString
-          });
 
           var marker = new google.maps.Marker({
             position: pos,
-            map: window.googleMap
+            map: window.googleMap,
+            html: contentString
           });
 
-          marker.addListener('click', function() {
-            infowindow.open(window.googleMap, marker);
+          infowindow = new google.maps.InfoWindow({
+            content: contentString
           });
+
+          google.maps.event.addListener(marker, "click", function () {
+      			infowindow.setContent(this.html);
+      			infowindow.open(window.googleMap, this);
+      		});
 
         }
 
@@ -123,19 +125,32 @@
             strokeWeight: 2
           });
 
+          var contentFlight = '<div id="content">'+
+            '<p>' + "Vuelo: " + data[flight]["code"] + '</p>'+
+            '<p>' + "Avión: " + data[flight]["plane"] + '</p>'+
+            '<p>' + data[flight]["seats"] + " asientos" + '</p>'+
+            '<p>' + "Aerolínea: " + data[flight]["airline"] + '</p>' +
+            '<p>' + "Origen: " + data[flight]["origin"]["name"] + '</p>' +
+            '<p>' + "Destino: " + data[flight]["destination"]["name"] + '</p>'
+            '</div>';
 
-          var image = 'https://img.fragrancex.com/images/ico-free-shipping.png';
+          // var image = 'https://img.fragrancex.com/images/ico-free-shipping.png';
           var flightCode = data[flight]["code"];
           markRoute[flightCode] = new google.maps.Marker({
             position: {lat: originX, lng: originY},
             map: window.googleMap,
-            icon: image
+            icon: "airplane.png",
+            html: contentFlight
           });
 
-          var markerAirplane = new google.maps.Marker({
-            position: {lat: originX, lng: originY},
-            map: window.googleMap
+          infowindow = new google.maps.InfoWindow({
+            content: contentFlight
           });
+
+          google.maps.event.addListener(markRoute[flightCode], "click", function () {
+      			infowindow.setContent(this.html);
+      			infowindow.open(window.googleMap, this);
+      		});
 
           flightPath.setMap(window.googleMap);
 
