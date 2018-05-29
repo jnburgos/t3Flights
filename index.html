@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+       #map {
+        height: 400px;
+        width: 100%;
+       }
+    </style>
+  </head>
+  <body>
+    <!-- <h3>My Google Maps Demo</h3> -->
+    <div id="map"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      var socket = io.connect('wss://integracion-tarea-3.herokuapp.com', {path: "/flights"});
+      socket.emit('AIRPORTS', {});
+      socket.emit('FLIGHTS', {});
+
+      var dictionary = {};
+      var markRoute = {};
+
+      socket.on('POSITION', function (data) {
+
+        var posX = data["position"][0];
+        var posY = data["position"][1];
+        var aCode = data["code"];
+        var pos = {lat: posX, lng: posY};
+
+        markRoute[aCode].setPosition(pos);
+
+
+        var code = data['code'];
+
+        if (dictionary[code] == undefined)
+        {
+          dictionary[code] = [{lat: posX, lng: posY}];
+          console.log(dictionary[code]);
+        }
+
+        else {
+          dictionary[code].push({lat: posX, lng: posY});
+          console.log(dictionary[code]);
+        }
+
+        for (code in dictionary){
+
+          var flightPath = new google.maps.Polyline({
+            path: dictionary[code],
+            geodesic: true,
+            strokeColor: '#d8d506',
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+          });
+
+          flightPath.setMap(window.googleMap);
+
+        }
+
+
+
+
+      });
+
+      function initMap() {
+        var santiago = {lat: -33.382761, lng: -70.803203};
+
+        window.googleMap = new google.maps.Map(document.getElementById('map'), {
+          zoom: 4,
+          center: santiago
+        });
+
+      }
+
+      socket.on('AIRPORTS', function (data) {
+        console.log(data);
+
+        for (arprt in data) {
+          // console.log(data[arprt]["airport_position"][0]);
+          // console.log(data[arprt]["airport_position"][1]);
+          var x = data[arprt]["airport_position"][0];
+          var y = data[arprt]["airport_position"][1];
+          var pos = {lat: x, lng: y};
+
+          var contentString = data[arprt]['name'];
+          console.log(contentString);
+
+          var infowindow = new google.maps.InfoWindow({
+            content: contentString
+          });
+
+          var marker = new google.maps.Marker({
+            position: pos,
+            map: window.googleMap
+          });
+
+          marker.addListener('click', function() {
+            infowindow.open(window.googleMap, marker);
+          });
+
+        }
+
+
+      });
+      socket.on('FLIGHTS', function (data) {
+        console.log(data);
+        for (flight in data){
+          // console.log("data de los flights");
+          var originX = data[flight]["origin"]["airport_position"][0];
+          var originY = data[flight]["origin"]["airport_position"][1];
+          var destinationX = data[flight]["destination"]["airport_position"][0];
+          var destinationY = data[flight]["destination"]["airport_position"][1];
+
+          var flightPlanCoordinates = [
+          {lat: originX, lng: originY},
+          {lat: destinationX, lng: destinationY}
+          ];
+          var flightPath = new google.maps.Polyline({
+            path: flightPlanCoordinates,
+            geodesic: true,
+            strokeColor: '#FF0000',
+            strokeOpacity: 1.0,
+            strokeWeight: 2
+          });
+
+
+          var flightCode = data[flight]["code"];
+          markRoute[flightCode] = new google.maps.Marker({
+            position: {lat: originX, lng: originY},
+            map: window.googleMap,
+            // icon: 'airplane.png'
+          });
+
+          var markerAirplane = new google.maps.Marker({
+            position: {lat: originX, lng: originY},
+            map: window.googleMap
+          });
+
+          flightPath.setMap(window.googleMap);
+
+        }
+      });
+
+
+
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCjXXhtLec-9uBI7A_9nHGrUF_8JezqY34&callback=initMap">
+    </script>
+  </body>
+</html>
